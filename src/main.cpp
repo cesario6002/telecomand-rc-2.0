@@ -36,10 +36,10 @@ void setup() {
 void loop() {
   
   //lecture des valeurs des joysticks
-  envoi.gaz = analogRead(35);
-  envoi.ailleron = analogRead(12);
-  envoi.prof = analogRead(13);
-  envoi.gouv = analogRead(33);
+  envoi.gaz = map(analogRead(35), 0, 4095, 0, 225); //joystick 1
+  envoi.ailleron = map(analogRead(12), 0, 4095, 45, 135); //joystick 2
+  envoi.prof = map(analogRead(13), 0, 4095, 0, 180); //joystick 2
+  envoi.gouv = map(analogRead(33), 0, 4095, 0, 180); //joystick 2
   delay(10);
   // Message à envoyer
   radio.write(&envoi, sizeof(envoi));
@@ -48,5 +48,5 @@ void loop() {
   if (!verifie) {
     Serial.println("Erreur d'envoi !");
   }
-  delay(50);  // Attendre 50 ms avant le prochain envoi
+  delay(10);  // Attendre 50 ms avant le prochain envoi
 }
