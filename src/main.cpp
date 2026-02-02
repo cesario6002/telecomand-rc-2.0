@@ -29,7 +29,7 @@ struct Commande
   int gouv;
   int volet;
   int turbo;
-  int largeur;
+  int largueur;
 };
 Commande envoi;
 void setup() {
@@ -46,18 +46,18 @@ void loop() {
   //lecture des valeurs des joysticks
   envoi.gaz = map(analogRead(35), 0, 4095, 1000, 2000); //joystick 1
   envoi.ailleron = map(analogRead(33), 0, 4095, 45, 135); //joystick 2
-  envoi.prof = map(analogRead(13), 0, 4095, 45, 135);
-  envoi.gouv = map(analogRead(12), 0, 4095, 135, 45); //joystick 2
-  envoi.volet = map(analogRead(14), 0, 4095, 0, 70); //joystick 3
+  envoi.prof = map(analogRead(13), 0, 4095, 0, 130);
+  envoi.gouv = map(analogRead(12), 0, 4095, 120, 30); //joystick 2
+  envoi.volet = 0; //joystick 3
   envoi.turbo = digitalRead(32); //switch 1
-  envoi.largeur = digitalRead(34); //switch 2
-  delay(10);
-  // Message à envoyer
+  envoi.largueur = digitalRead(34); //switch 2
+  if (digitalRead(14)==1){
+    envoi.volet = 30 ; 
+  }  
   radio.write(&envoi, sizeof(envoi));
   verifie = radio.write(&envoi, sizeof(envoi));
-  Serial.println(envoi.prof);
-
-  if (!verifie) {
+  if (verifie = 0) {
+    
     Serial.println("Erreur d'envoi !");
   }
   delay(10);  // Attendre 10 ms avant le prochain envoi
