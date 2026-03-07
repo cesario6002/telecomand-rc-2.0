@@ -9,3 +9,26 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+/*les connexion  a l'esp32 de ma radio commande sont les suivantes :
+JOYSTIQUE 
+    JOYSTICK GAUCHE
+         GAZ = Y = 36 
+         AILLERON = X = 39
+    JOYSTICK DROIT
+         PROFONDEUR = Y =  32
+         GOUVERNAIL = X = 34
+         bouton de larguage = 35
+Les switchs
+    switch turbo = 33
+    volet 15° - 30° - 0° = 37 (pont divieur de tension)
+     Pilotage automatique -- assistance au pilotage = 14
+     pilotage automatique -- assistance au décollage = 26
+     pilotage automatique -- assistance à l'atterrissage = 13
+connexion nrf24l01
+     CE = 21
+     CSN = 5
+     MOSI = 23
+     MISO = 19
+     SCK = 18
+
+*/
