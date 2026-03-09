@@ -2,51 +2,59 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <RF24.h>
-
-
 #include "RemoteControl.h"
+#include "Config.h"
 
-// Instanciation de la télécommande avec tes broches spécifiques
-// Ordre : CE, CSN, Gaz, Gouv, Prof, Ail, Volet, Turbo, Largueur, Assist, Takeoff, Landing
-RemoteControl remote(21, 5, 36, 33, 39, 32, 35, 34, 27, 14, 26, 13);
+RemoteControl remote(RADIO_CE, RADIO_CSN);
 
-const TickType_t xFrequency = pdMS_TO_TICKS(20); // Cadence de 50Hz (20ms) [3]
+// File de message pour le transfert sécurisé entre les cœurs 1 et 0
+QueueHandle_t packetQueue;
 
-// Tâche de Capture (Cœur 1) : Priorité haute pour la réactivité des sticks
+// Tâche de Capture (Cœur 1) : Priorité 5
 void captureTask(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(20); // 50Hz
+    Commande dataSnapshot; // Copie locale pour la fille de messages
     for(;;) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency); // Intervalle stable pour le PID [3]
+        vTaskDelayUntil(&xLastWakeTime, xFrequency); // Synchronisation à 50Hz
         remote.readInputs();
+        dataSnapshot = remote.getPacket(); 
+        xQueueOverwrite(packetQueue, &dataSnapshot);
     }
 }
 
-// Tâche Radio (Cœur 0) : Gère l'envoi sans ralentir la lecture des capteurs
+// Tâche Radio (Cœur 0) : Priorité 4
 void radioTask(void *pvParameters) {
+    Commande cmdToSend;
     for(;;) {
-        if (!remote.sendData()) {
-            Serial.println("Erreur de liaison radio"); // Debug via le moniteur [4]
+
+        if (xQueueReceive(packetQueue, &cmdToSend, portMAX_DELAY)) {
+
+            if (!remote.sendData(&cmdToSend)) {
+                Serial.println("Erreur de liaison radio");
+            }
         }
-        vTaskDelay(xFrequency); // Envoi synchronisé à 50Hz
-      }
+    }
 }
 
 void setup() {
-    Serial.begin(115200); // Vitesse standard pour l'ESP32 [5]
-    
+    Serial.begin(115200); 
+    // Création de la file de données (boîte aux lettres sécurisée) [2]
+    packetQueue = xQueueCreate(1, sizeof(Commande));
+
+    // Initialisation matérielle
     if (!remote.begin()) {
-        Serial.println("Échec de l'initialisation matérielle !");
-        while(1); // Arrêt de sécurité si le NRF24 est absent [6]
+        Serial.println("ERREUR : NRF24L01 introuvable !");
+        while(1); // Arrêt de sécurité
     }
 
-    // Création des tâches FreeRTOS sur les deux cœurs [2, 7]
+    // Lancement des tâches sur les deux cœurs de l'ESP32 [7, 8]
+    // Capture sur Cœur 1 (appli) | Radio sur Cœur 0 (système/RF)
     xTaskCreatePinnedToCore(captureTask, "Capture", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(radioTask, "Radio", 4096, NULL, 4, NULL, 0);
 
-    Serial.println("Système de vol prêt !");
+    Serial.println(">> Télécommande prête : Vol 50Hz activé.");
 }
-
 void loop() {
-    // La boucle loop est supprimée pour laisser FreeRTOS gérer les priorités [8]
     vTaskDelete(NULL); 
 }

@@ -1,21 +1,15 @@
 #include "RemoteControl.h"
-
-RemoteControl::RemoteControl(uint8_t ce, uint8_t csn, uint8_t pGaz, 
-                             uint8_t pGouv, uint8_t pProf, uint8_t pAil, uint8_t pVolet,
-                             uint8_t pTurbo, uint8_t pLargueur,
-                             uint8_t pAssist, uint8_t pTakeoff, uint8_t pLanding)
-    : _radio(ce, csn), 
-      _pinGaz(pGaz), _pinGouv(pGouv), _pinProf(pProf), _pinAil(pAil), _pinVolet(pVolet),
-      _pinTurbo(pTurbo), _pinLargueur(pLargueur), 
-      _pinAssist(pAssist), _pinTakeoff(pTakeoff), _pinLanding(pLanding) {}
+#include "Config.h"
+RemoteControl::RemoteControl(uint8_t ce, uint8_t csn)
+    : _radio(ce, csn) {}
 
 bool RemoteControl::begin() {
-    pinMode(_pinTurbo, INPUT);
-    pinMode(_pinLargueur, INPUT);
-    pinMode(_pinAssist, INPUT);
-    pinMode(_pinTakeoff, INPUT);
-    pinMode(_pinLanding, INPUT);
-    _radio.begin();
+    pinMode(PIN_TURBO, INPUT);
+    pinMode(PIN_LARGUEUR, INPUT);
+    pinMode(PIN_ASSIST, INPUT);
+    pinMode(PIN_TAKEOFF, INPUT);
+    pinMode(PIN_LANDING, INPUT);
+    // Initialize radio 
     if (!_radio.begin()) return false;
     _radio.openWritingPipe(0xF0F0F0F0E1LL);
     _radio.setPALevel(RF24_PA_HIGH);
@@ -26,23 +20,25 @@ bool RemoteControl::begin() {
 }
 
 void RemoteControl::readInputs() {
-    // Joysticks sur ADC1 (Stable avec Wi-Fi) [9]
-    _data.gaz      = map(analogRead(_pinGaz), 0, 4095, 1000, 2000);
-    _data.gouv     = map(analogRead(_pinGouv), 0, 4095, 1000, 2000);
-    _data.prof     = map(analogRead(_pinProf), 0, 4095, 1000, 2000);
-    _data.ail      = map(analogRead(_pinAil), 0, 4095, 1000, 2000);
-    _data.volet    = map(analogRead(_pinVolet), 0, 4095, 0, 30); // Pont diviseur
+    // 1. Lecture et conversion avec vos plages spécifiques
+    int bruteGaz  = map(analogRead(PIN_GAZ), 2448, 3142, 1000, 2000);
+    int bruteProf = map(analogRead(PIN_PROF), 1186, 2286, 0, 180);
+    int bruteAil  = 225- map(analogRead(PIN_AIL), 2690, 1430, 0, 180); 
+    int bruteGouv = map(analogRead(PIN_GOUV), 0, 4095, 0, 180); 
 
-    // Boutons et Sécurité (Input-only pins)
-    _data.turbo    = digitalRead(_pinTurbo); 
-    _data.largueur = digitalRead( _pinLargueur);
-    _data.assist   = digitalRead( _pinAssist);
-    _data.takeoff  = digitalRead( _pinTakeoff);
-    _data.landing  = digitalRead( _pinLanding);
+    // 2. Application du lissage (Seuil de 2 degrés/unités)
+    // On ne met à jour la valeur envoyée que si le mouvement est significatif
+    if (abs(bruteGaz - _data.gaz) > 5)   _data.gaz  = bruteGaz;  // Gaz (plus souple)
+    if (abs(bruteProf - _data.prof) > 5) _data.prof = bruteProf; // Profondeur
+    if (abs(bruteAil - _data.ail) > 5)   _data.ail  = constrain(bruteAil, 50, 170);  // Ailerons
+    if (abs(bruteGouv - _data.gouv) > 5) _data.gouv = bruteGouv; // Dérive
 
-    if (_data.assist) _data.volet = 30; // Priorité logicielle
+    // 3. Boutons et interrupteurs
+    _data.assist   = !digitalRead(PIN_ASSIST);
+    _data.turbo    = !digitalRead(PIN_TURBO);
+    _data.largueur = !digitalRead(PIN_LARGUEUR);
 }
 
-bool RemoteControl::sendData() {
-    return _radio.write(&_data, sizeof(_data));
+bool RemoteControl::sendData(Commande* cmd) {
+    return _radio.write(cmd, sizeof(Commande));
 }
