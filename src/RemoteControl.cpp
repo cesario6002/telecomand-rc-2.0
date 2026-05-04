@@ -21,17 +21,17 @@ bool RemoteControl::begin() {
 
 void RemoteControl::readInputs() {
     // 1. Lecture et conversion avec vos plages spécifiques
-    int bruteGaz  = map(analogRead(PIN_GAZ), 2448, 3142, 1000, 2000);
-    int bruteProf = map(analogRead(PIN_PROF), 1186, 2286, 0, 180);
-    int bruteAil  = 225- map(analogRead(PIN_AIL), 2690, 1430, 0, 180); 
-    int bruteGouv = map(analogRead(PIN_GOUV), 0, 4095, 0, 180); 
+    int bruteGaz  = map(analogRead(PIN_GAZ), 2450, 3145, 1000, 2000);
+    int bruteProf = analogRead(PIN_PROF);
+    int bruteAil  = 180 - map(analogRead(PIN_AIL), 2800, 1160, 0, 180);
+    int bruteGouv = map(analogRead(PIN_GOUV), 170, 848, 0, 100);
 
     // 2. Application du lissage (Seuil de 2 degrés/unités)
     // On ne met à jour la valeur envoyée que si le mouvement est significatif
-    if (abs(bruteGaz - _data.gaz) > 5)   _data.gaz  = bruteGaz;  // Gaz (plus souple)
-    if (abs(bruteProf - _data.prof) > 5) _data.prof = bruteProf; // Profondeur
-    if (abs(bruteAil - _data.ail) > 5)   _data.ail  = constrain(bruteAil, 50, 170);  // Ailerons
-    if (abs(bruteGouv - _data.gouv) > 5) _data.gouv = bruteGouv; // Dérive
+    if (abs(bruteGaz - _data.gaz) > 10)   _data.gaz  = constrain(bruteGaz, 1000, 2000);  // Gaz (plus souple)
+    if (abs(bruteProf - _data.prof) > 6) _data.prof = bruteProf; // Profondeur
+    if (abs(bruteAil - _data.ail) > 6)   _data.ail  = constrain(bruteAil, 35, 145);  // Ailerons
+    if (abs(bruteGouv - _data.gouv) > 6) _data.gouv = bruteGouv ; // Dérive
 
     // 3. Boutons et interrupteurs
     _data.assist   = !digitalRead(PIN_ASSIST);
